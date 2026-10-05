@@ -1,0 +1,62 @@
+services:
+  # ----------------------------------------------------
+  # Base de données relationnelle PostgreSQL
+  # ----------------------------------------------------
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: novamarket-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: novamarket_db
+      POSTGRES_USER: novamarket
+      POSTGRES_PASSWORD: novamarket_secure_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U novamarket -d novamarket_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------
+  # Interface Web d'administration pgAdmin (optionnel pour debug)
+  # ----------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: novamarket-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@novamarket.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres-db
+
+  # ----------------------------------------------------
+  # Application Spring Boot (Profil prod avec PostgreSQL)
+  # ----------------------------------------------------
+  backend-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: novamarket-backend-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres-db
+      DB_PORT: 5432
+      DB_NAME: novamarket_db
+      DB_USER: novamarket
+      DB_PASSWORD: novamarket_secure_pass
+      APP_JWT_SECRET: NovaMarketVerySecretKeyForJwtTokenSigningMustBe256BitsLong!
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

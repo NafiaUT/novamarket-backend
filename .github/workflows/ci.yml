@@ -1,0 +1,35 @@
+name: NovaMarket Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code source (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurer l'environnement Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Compiler et exécuter tous les tests (JUnit 5, Mockito, MockMvc)
+        run: mvn clean test -B
+
+      - name: Vérifier le packaging du JAR exécutable
+        run: mvn package -DskipTests -B
+
+      - name: Archiver le rapport de tests Surefire
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surefire-test-reports
+          path: target/surefire-reports/
